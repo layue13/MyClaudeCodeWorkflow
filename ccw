@@ -1,0 +1,320 @@
+#!/bin/bash
+
+# Claude Code Workflow 管理脚本
+# 支持安装、更新、卸载 Claude Code 工作流程配置
+
+set -e  # 遇到错误时退出
+
+VERSION="1.0.0"
+REPO_URL="https://raw.githubusercontent.com/layue13/MyClaudeCodeWorkflow/main"
+
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# 打印带颜色的消息
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# 检查是否在目标项目目录中
+check_target_directory() {
+    if [ ! -d ".git" ]; then
+        print_error "当前目录不是 Git 仓库，请在目标项目根目录下运行此脚本"
+        exit 1
+    fi
+    
+    print_info "在 Git 仓库中检测到：$(pwd)"
+}
+
+# 下载配置文件
+download_config() {
+    print_info "正在下载 Claude Code 配置文件..."
+    
+    # 创建 .claude 目录
+    mkdir -p .claude/agents
+    
+    # 下载主配置文件
+    print_info "下载 CLAUDE.md..."
+    curl -s -o CLAUDE.md "$REPO_URL/CLAUDE.md" || {
+        print_error "下载 CLAUDE.md 失败"
+        exit 1
+    }
+    
+    # 下载代理配置文件
+    print_info "下载代理配置文件..."
+    curl -s -o .claude/agents/research-agent.md "$REPO_URL/.claude/agents/research-agent.md" || {
+        print_error "下载 research-agent.md 失败"
+        exit 1
+    }
+    
+    curl -s -o .claude/agents/solution-agent.md "$REPO_URL/.claude/agents/solution-agent.md" || {
+        print_error "下载 solution-agent.md 失败"
+        exit 1
+    }
+    
+    curl -s -o .claude/agents/github-agent.md "$REPO_URL/.claude/agents/github-agent.md" || {
+        print_error "下载 github-agent.md 失败"
+        exit 1
+    }
+    
+    print_success "配置文件下载完成"
+}
+
+# 检查是否已安装
+check_installed() {
+    if [ -f "CLAUDE.md" ] && [ -d ".claude/agents" ]; then
+        return 0  # 已安装
+    else
+        return 1  # 未安装
+    fi
+}
+
+# 备份现有配置
+backup_config() {
+    if check_installed; then
+        local backup_dir=".claude_backup_$(date +%Y%m%d_%H%M%S)"
+        print_info "备份现有配置到 $backup_dir..."
+        
+        mkdir -p "$backup_dir"
+        [ -f "CLAUDE.md" ] && cp "CLAUDE.md" "$backup_dir/"
+        [ -d ".claude" ] && cp -r ".claude" "$backup_dir/"
+        
+        print_success "配置已备份"
+        echo "$backup_dir" > .claude_last_backup
+    fi
+}
+
+# 卸载配置
+uninstall_config() {
+    print_info "开始卸载 Claude Code Workflow..."
+    
+    if ! check_installed; then
+        print_warning "Claude Code Workflow 未安装，无需卸载"
+        return
+    fi
+    
+    # 询问是否确认卸载
+    echo -n "确定要卸载 Claude Code Workflow 吗? (y/N): "
+    read -r confirm
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        print_info "取消卸载"
+        return
+    fi
+    
+    # 备份配置
+    backup_config
+    
+    # 删除配置文件
+    print_info "删除配置文件..."
+    rm -f CLAUDE.md
+    rm -rf .claude/agents
+    
+    # 如果 .claude 目录为空则删除
+    if [ -d ".claude" ] && [ -z "$(ls -A .claude)" ]; then
+        rmdir .claude
+    fi
+    
+    # 清理 .gitignore 中的规则
+    if [ -f ".gitignore" ]; then
+        print_info "清理 .gitignore..."
+        # 创建临时文件，排除Claude Code相关规则
+        grep -v "settings.local.json\|*.local.json\|.claude/settings.local.json\|# Claude Code local settings" .gitignore > .gitignore.tmp 2>/dev/null || true
+        mv .gitignore.tmp .gitignore
+    fi
+    
+    print_success "卸载完成！"
+    
+    if [ -f ".claude_last_backup" ]; then
+        local backup_dir=$(cat .claude_last_backup)
+        print_info "如需恢复，备份文件在：$backup_dir"
+        rm .claude_last_backup
+    fi
+}
+
+# 更新配置
+update_config() {
+    print_info "开始更新 Claude Code Workflow..."
+    
+    if ! check_installed; then
+        print_warning "Claude Code Workflow 未安装，请先使用 install 命令安装"
+        return
+    fi
+    
+    # 备份现有配置
+    backup_config
+    
+    # 下载最新配置
+    download_config
+    update_gitignore
+    
+    print_success "更新完成！"
+    
+    if [ -f ".claude_last_backup" ]; then
+        local backup_dir=$(cat .claude_last_backup)
+        print_info "原配置已备份到：$backup_dir"
+        rm .claude_last_backup
+    fi
+}
+
+# 安装配置
+install_config() {
+    print_info "开始安装 Claude Code Workflow..."
+    
+    if check_installed; then
+        print_warning "Claude Code Workflow 已安装，请使用 update 命令更新"
+        return
+    fi
+    
+    download_config
+    update_gitignore
+    show_next_steps
+}
+
+# 显示状态
+show_status() {
+    echo "================================================="
+    echo "    Claude Code Workflow 状态"
+    echo "================================================="
+    echo
+    
+    if check_installed; then
+        print_success "Claude Code Workflow 已安装"
+        echo
+        print_info "已安装的文件："
+        [ -f "CLAUDE.md" ] && echo "  ✅ CLAUDE.md"
+        [ -f ".claude/agents/research-agent.md" ] && echo "  ✅ .claude/agents/research-agent.md"
+        [ -f ".claude/agents/solution-agent.md" ] && echo "  ✅ .claude/agents/solution-agent.md"
+        [ -f ".claude/agents/github-agent.md" ] && echo "  ✅ .claude/agents/github-agent.md"
+        [ -f ".claude/settings.local.json" ] && echo "  📄 .claude/settings.local.json (本地配置)"
+    else
+        print_warning "Claude Code Workflow 未安装"
+    fi
+    echo
+}
+
+# 更新 .gitignore
+update_gitignore() {
+    print_info "更新 .gitignore 文件..."
+    
+    local gitignore_content="
+# Claude Code local settings
+settings.local.json
+*.local.json
+.claude/settings.local.json"
+    
+    if [ -f ".gitignore" ]; then
+        # 检查是否已存在相关规则
+        if ! grep -q "settings.local.json" .gitignore; then
+            echo "$gitignore_content" >> .gitignore
+            print_success ".gitignore 已更新"
+        else
+            print_warning ".gitignore 中已存在 Claude Code 相关规则"
+        fi
+    else
+        echo "$gitignore_content" > .gitignore
+        print_success ".gitignore 已创建"
+    fi
+}
+
+# 提示用户下一步操作
+show_next_steps() {
+    echo
+    print_success "🎉 Claude Code Workflow 安装完成！"
+    echo
+    print_info "安装的文件："
+    echo "  📄 CLAUDE.md - 工作流程配置"
+    echo "  🤖 .claude/agents/ - 专门代理配置"
+    echo "  📝 .gitignore - 已更新排除规则"
+    echo
+    print_info "下一步操作："
+    echo "  1. 检查并根据项目需要调整 CLAUDE.md 中的配置"
+    echo "  2. 创建 .claude/settings.local.json（如果需要本地配置）"
+    echo "  3. 提交更改：git add . && git commit -m \"Add Claude Code workflow\""
+    echo
+    print_warning "注意：settings.local.json 文件不会被提交到版本控制"
+}
+
+# 显示帮助信息
+show_help() {
+    echo "================================================="
+    echo "    Claude Code Workflow 管理器 v$VERSION"
+    echo "================================================="
+    echo
+    echo "用法: $0 <command>"
+    echo
+    echo "命令："
+    echo "  install    安装 Claude Code Workflow 到当前项目"
+    echo "  update     更新已安装的 Claude Code Workflow"
+    echo "  uninstall  卸载 Claude Code Workflow"
+    echo "  status     显示安装状态"
+    echo "  help       显示此帮助信息"
+    echo
+    echo "示例："
+    echo "  ccw install     # 安装到当前项目"
+    echo "  ccw update      # 更新配置"
+    echo "  ccw uninstall   # 卸载配置"
+    echo "  ccw status      # 查看状态"
+    echo
+    echo "注意："
+    echo "  - 请在目标项目的 Git 仓库根目录下运行此脚本"
+    echo "  - 卸载和更新前会自动备份现有配置"
+    echo "  - 本地配置文件 settings.local.json 不会被提交到版本控制"
+}
+
+# 主函数
+main() {
+    # 检查参数
+    if [ $# -eq 0 ]; then
+        show_help
+        exit 1
+    fi
+    
+    local command="$1"
+    
+    case "$command" in
+        "install")
+            check_target_directory
+            install_config
+            ;;
+        "update")
+            check_target_directory
+            update_config
+            ;;
+        "uninstall")
+            check_target_directory
+            uninstall_config
+            ;;
+        "status")
+            check_target_directory
+            show_status
+            ;;
+        "help"|"-h"|"--help")
+            show_help
+            ;;
+        *)
+            print_error "未知命令: $command"
+            echo
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# 运行主函数
+main "$@"
