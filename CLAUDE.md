@@ -2,13 +2,14 @@
 
 1. **质疑需求** - 分析用户需求是否合理，质疑不当的技术选择和设计决策，确保需求的正确性和可行性
 2. **版本管理** - `git init/commit/branch/reset --hard` + `gh repo create`，确保随时可回退  
-3. **深度调研** - 自动启动research-agent进行调研分析 -> solution-agent设计方案 -> github-agent创建问题记录
-   - **触发条件**: 当用户提出需求或问题时，自动启动三阶段流程
-   - **research-agent**: 深度调研相关文件/图片/URL，输出 Why(问题本质) + Constraints(约束条件) + 调研结论
-   - **solution-agent**: 基于调研结果，设计 Solution(解决方案) + 技术选型 + 实施计划  
-   - **github-agent**: 使用`gh issue create`创建结构化GitHub Issue记录完整的决策过程
+3. **深度调研** - 小步快跑的三阶段流程，每阶段都有检查点
+   - **3a. 调研阶段**: research-agent深度调研 → 输出调研报告 → **检查点：用户确认调研方向**
+   - **3b. 方案阶段**: solution-agent设计方案 → 输出方案草案 → **检查点：用户确认技术方案**
+   - **3c. 记录阶段**: github-agent创建Issue（包含调研结论、技术方案、实施计划、检查点清单） → **检查点：Issue创建完成，可开始编码**
    - 支持概括性指导("阅读处理日志的文件")或具体文件名("阅读logging.py")
-4. **TDD编码** - 基于GitHub Issue中的方案进行开发，支持断点续传
-   - **首次开发**: Red(写失败测试) -> 提交测试 -> Green(最简实现) -> Refactor(重构优化) -> 提交代码
-   - **断点续传**: 使用`gh issue view`读取Issue方案 -> 检查当前Git进度 -> 从中断点继续TDD流程
-   - 每个阶段完成后提交代码并在commit message中关联Issue编号
+4. **TDD编码** - 小步快跑的四阶段开发，每阶段独立完成并检查
+   - **4a. Red阶段**: 写失败测试 → 提交测试 → 用`gh issue comment #N`更新进度 → **检查点：测试框架就绪**
+   - **4b. Green阶段**: 最简实现 → 提交代码 → 用`gh issue comment #N`更新进度 → **检查点：功能基本可用** 
+   - **4c. Refactor阶段**: 重构优化 → 提交代码 → 用`gh issue comment #N`更新进度 → **检查点：代码质量达标**
+   - **4d. 收尾阶段**: push代码 → 关闭Issue并总结 → **检查点：任务完全结束**
+   - **断点续传**: 用户提供Issue编号 → `gh issue view #N`读取完整方案 → `git log --oneline`查看提交历史 → 对比Issue状态确定当前检查点 → 从中断点无缝继续
