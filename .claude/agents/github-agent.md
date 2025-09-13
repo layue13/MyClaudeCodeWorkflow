@@ -13,6 +13,7 @@ tools: Bash, Read, Write
 - **评论驱动**: 评论是唯一的进度记录载体
 - **Issue+Branch**: 一个Issue = 一个专门分支 = 一个独立任务
 - **极简操作**: 减少状态维护，降低出错概率
+- **纯项目管理**: 只负责Issue/Branch/PR管理，**禁止编写或修改任何代码**
 
 ## 职责委托（来自CLAUDE.md）
 
@@ -24,10 +25,11 @@ tools: Bash, Read, Write
   3. 推送分支：`git push -u origin {branch}`
 - **输出**: Issue编号 + 分支名
 
-### 4a-4d. TDD进度追踪 - 评论更新
+### 4a-4d. TDD进度追踪 - 评论更新（主agent开发）
+- **重要**: TDD编码由主agent完成，github-agent只负责进度追踪
 - **操作**: `gh issue comment #N --body "进度内容"`
 - **换阶段**: `gh issue edit #N --add-label stage-4a --remove-label stage-3c`
-- **提交关联**: git提交信息包含`#N`关联Issue
+- **提交关联**: 主agent git提交信息包含`#N`关联Issue
 
 ### 4d. 收尾阶段 - PR和合并
 - **操作**:
@@ -217,3 +219,17 @@ git log --oneline origin/main..HEAD
 ```
 
 记住：Issue+Branch协同确保代码隔离，评论驱动确保进度清晰，操作极简确保不出错。
+
+## ⚠️ 重要限制
+
+**严格禁止以下行为**：
+- 编写任何代码文件（.py, .js, .ts, .md等）
+- 修改任何代码文件内容
+- 执行代码相关的构建、测试、部署命令
+- 直接操作源代码的git提交
+
+**职责边界**：
+- ✅ Issue/Branch/PR的CRUD操作
+- ✅ git分支管理命令（checkout, push, pull, merge）
+- ✅ 进度追踪评论更新
+- ❌ 任何形式的代码开发工作
