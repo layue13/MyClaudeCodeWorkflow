@@ -3,9 +3,8 @@
 set -e
 
 REPO_URL="https://github.com/layue13/MyClaudeCodeWorkflow.git"
-INSTALL_DIR="$HOME/.claude-workflow"
-BIN_DIR="$HOME/.local/bin"
-CONFIG_DIR="$HOME/.config/claude"
+TEMP_DIR="/tmp/claude-workflow-$$"
+CLAUDE_DIR="$HOME/.claude"
 
 print_usage() {
     echo "Claude Code Workflow Installer"
@@ -43,203 +42,74 @@ check_dependencies() {
 }
 
 install_workflow() {
-    echo "Installing Claude Code Workflow..."
+    echo "Installing Claude Code Workflow to $CLAUDE_DIR..."
 
-    # Create directories
-    mkdir -p "$BIN_DIR"
-    mkdir -p "$CONFIG_DIR"
+    # Create temporary directory for cloning
+    mkdir -p "$TEMP_DIR"
 
-    # Clone or update repository
-    if [ -d "$INSTALL_DIR" ]; then
-        echo "Updating existing installation..."
-        cd "$INSTALL_DIR"
-        git pull origin main
-    else
-        echo "Cloning repository..."
-        git clone "$REPO_URL" "$INSTALL_DIR"
+    # Clone repository to temporary directory
+    echo "Downloading latest version..."
+    git clone "$REPO_URL" "$TEMP_DIR"
+
+    # Create .claude directory if it doesn't exist
+    mkdir -p "$CLAUDE_DIR"
+
+    # Backup existing files if they exist
+    if [ -f "$CLAUDE_DIR/CLAUDE.md" ]; then
+        echo "Backing up existing CLAUDE.md..."
+        cp "$CLAUDE_DIR/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md.backup.$(date +%s)"
     fi
 
-    # Create global configuration symlinks
-    echo "Setting up global configuration..."
-
-    # Link .claude directory to global config
-    if [ -L "$CONFIG_DIR/agents" ]; then
-        rm "$CONFIG_DIR/agents"
-    elif [ -d "$CONFIG_DIR/agents" ]; then
-        echo "Warning: Existing agents directory found. Backing up..."
-        mv "$CONFIG_DIR/agents" "$CONFIG_DIR/agents.backup.$(date +%s)"
+    if [ -d "$CLAUDE_DIR/agents" ]; then
+        echo "Backing up existing agents directory..."
+        mv "$CLAUDE_DIR/agents" "$CLAUDE_DIR/agents.backup.$(date +%s)"
     fi
 
-    ln -sf "$INSTALL_DIR/.claude/agents" "$CONFIG_DIR/agents"
+    # Copy files to global .claude directory
+    echo "Installing configuration files..."
+    cp "$TEMP_DIR/CLAUDE.md" "$CLAUDE_DIR/"
+    cp -r "$TEMP_DIR/.claude/agents" "$CLAUDE_DIR/"
 
-    # Copy CLAUDE.md to global config
-    cp "$INSTALL_DIR/CLAUDE.md" "$CONFIG_DIR/CLAUDE.md"
+    # Clean up temporary directory
+    rm -rf "$TEMP_DIR"
 
-    # Create wrapper script
-    cat > "$BIN_DIR/ccw" << 'EOF'
-#!/bin/bash
-
-WORKFLOW_DIR="$HOME/.claude-workflow"
-CONFIG_DIR="$HOME/.config/claude"
-
-case "$1" in
-    init)
-        echo "Initializing Claude Code Workflow in current directory..."
-
-        # Copy CLAUDE.md if not exists
-        if [ ! -f "CLAUDE.md" ]; then
-            cp "$CONFIG_DIR/CLAUDE.md" ./CLAUDE.md
-            echo "✓ Created CLAUDE.md"
-        else
-            echo "✓ CLAUDE.md already exists"
-        fi
-
-        # Create .claude directory if not exists
-        if [ ! -d ".claude" ]; then
-            mkdir -p .claude
-            echo "✓ Created .claude directory"
-        fi
-
-        # Link agents if not exists
-        if [ ! -L ".claude/agents" ] && [ ! -d ".claude/agents" ]; then
-            ln -sf "$CONFIG_DIR/agents" .claude/agents
-            echo "✓ Linked Claude agents"
-        else
-            echo "✓ Claude agents already configured"
-        fi
-
-        echo ""
-        echo "Claude Code Workflow initialized successfully!"
-        echo "You can now use 'claude' command with the workflow configuration."
-        ;;
-
-    update)
-        echo "Updating Claude Code Workflow..."
-        cd "$WORKFLOW_DIR"
-        git pull origin main
-        cp CLAUDE.md "$CONFIG_DIR/CLAUDE.md"
-        echo "✓ Updated to latest version"
-        ;;
-
-    status)
-        echo "Claude Code Workflow Status:"
-        echo "Installation: $WORKFLOW_DIR"
-        if [ -d "$WORKFLOW_DIR" ]; then
-            echo "✓ Installed"
-            cd "$WORKFLOW_DIR"
-            echo "Version: $(git rev-parse --short HEAD)"
-            echo "Last update: $(git log -1 --format=%cd --date=short)"
-        else
-            echo "✗ Not installed"
-        fi
-
-        echo ""
-        echo "Configuration: $CONFIG_DIR"
-        if [ -f "$CONFIG_DIR/CLAUDE.md" ]; then
-            echo "✓ Global CLAUDE.md configured"
-        else
-            echo "✗ Global CLAUDE.md missing"
-        fi
-
-        if [ -L "$CONFIG_DIR/agents" ]; then
-            echo "✓ Global agents configured"
-        else
-            echo "✗ Global agents missing"
-        fi
-        ;;
-
-    *)
-        echo "Claude Code Workflow CLI"
-        echo ""
-        echo "Usage: ccw [command]"
-        echo ""
-        echo "Commands:"
-        echo "  init      Initialize workflow in current directory"
-        echo "  update    Update to latest version"
-        echo "  status    Show installation status"
-        echo ""
-        echo "After initialization, use 'claude' command normally."
-        ;;
-esac
-EOF
-
-    chmod +x "$BIN_DIR/ccw"
-
-    # Add to PATH if not already there
-    add_to_path
+    # Installation complete - no wrapper script needed
 
     echo ""
     echo "✓ Claude Code Workflow installed successfully!"
     echo ""
-    echo "Usage:"
-    echo "  ccw init      # Initialize workflow in a project directory"
-    echo "  ccw update    # Update to latest version"
-    echo "  ccw status    # Check installation status"
+    echo "Files installed to: $CLAUDE_DIR"
+    echo "  ├── CLAUDE.md        (Development guidelines)"
+    echo "  └── agents/          (Claude agent configurations)"
     echo ""
-    echo "To use in a project:"
-    echo "  1. cd /path/to/your/project"
-    echo "  2. ccw init"
-    echo "  3. claude [your-command]"
+    echo "The configuration is now globally available for all Claude sessions."
+    echo "Simply use 'claude' command in any directory to access the workflow."
 }
 
-add_to_path() {
-    local shell_config=""
+update_workflow() {
+    echo "Updating Claude Code Workflow..."
 
-    if [ -n "$BASH_VERSION" ]; then
-        shell_config="$HOME/.bashrc"
-    elif [ -n "$ZSH_VERSION" ]; then
-        shell_config="$HOME/.zshrc"
-    else
-        # Try to detect shell
-        case "$SHELL" in
-            */bash) shell_config="$HOME/.bashrc" ;;
-            */zsh) shell_config="$HOME/.zshrc" ;;
-            */fish) shell_config="$HOME/.config/fish/config.fish" ;;
-        esac
-    fi
-
-    if [ -n "$shell_config" ] && [ -f "$shell_config" ]; then
-        if ! grep -q "$BIN_DIR" "$shell_config"; then
-            echo "" >> "$shell_config"
-            echo "# Added by Claude Code Workflow installer" >> "$shell_config"
-            echo "export PATH=\"\$HOME/.local/bin:\$PATH\"" >> "$shell_config"
-            echo "✓ Added $BIN_DIR to PATH in $shell_config"
-            echo "Please restart your terminal or run: source $shell_config"
-        fi
-    else
-        echo "Please add $BIN_DIR to your PATH manually"
-    fi
+    # Use same install process for updates
+    install_workflow
 }
 
 uninstall_workflow() {
     echo "Uninstalling Claude Code Workflow..."
 
-    # Remove installation directory
-    if [ -d "$INSTALL_DIR" ]; then
-        rm -rf "$INSTALL_DIR"
-        echo "✓ Removed installation directory"
+    # Remove workflow files from .claude directory
+    if [ -f "$CLAUDE_DIR/CLAUDE.md" ]; then
+        rm "$CLAUDE_DIR/CLAUDE.md"
+        echo "✓ Removed CLAUDE.md"
     fi
 
-    # Remove global config
-    if [ -L "$CONFIG_DIR/agents" ]; then
-        rm "$CONFIG_DIR/agents"
-        echo "✓ Removed global agents link"
-    fi
-
-    if [ -f "$CONFIG_DIR/CLAUDE.md" ]; then
-        rm "$CONFIG_DIR/CLAUDE.md"
-        echo "✓ Removed global CLAUDE.md"
-    fi
-
-    # Remove wrapper script
-    if [ -f "$BIN_DIR/ccw" ]; then
-        rm "$BIN_DIR/ccw"
-        echo "✓ Removed ccw command"
+    if [ -d "$CLAUDE_DIR/agents" ]; then
+        rm -rf "$CLAUDE_DIR/agents"
+        echo "✓ Removed agents directory"
     fi
 
     echo ""
     echo "✓ Claude Code Workflow uninstalled successfully!"
-    echo "Note: You may need to remove $BIN_DIR from your PATH manually"
+    echo "Your .claude directory structure has been cleaned up."
 }
 
 # Main script
@@ -249,12 +119,7 @@ case "$1" in
         install_workflow
         ;;
     update)
-        if [ ! -d "$INSTALL_DIR" ]; then
-            echo "Error: Claude Code Workflow is not installed"
-            echo "Run: $0 install"
-            exit 1
-        fi
-        install_workflow
+        update_workflow
         ;;
     uninstall)
         uninstall_workflow
