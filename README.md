@@ -48,12 +48,68 @@ This repository contains a curated set of development guidelines, agent configur
 - Follow project formatting/linting standards
 - Clear commit messages explaining "why"
 
+## Quick Install
+
+### One-Line Installation
+
+```bash
+curl -fsSL https://github.com/layue13/MyClaudeCodeWorkflow/raw/main/ccw.sh | bash
+```
+
+This will install the workflow configuration globally to your `~/.claude/` directory.
+
+### Manual Installation
+
+```bash
+# Download the installer
+wget https://github.com/layue13/MyClaudeCodeWorkflow/raw/main/ccw.sh
+
+# Make it executable and run
+chmod +x ccw.sh
+./ccw.sh install
+```
+
+### What Gets Installed
+
+The installer copies the following files to your global Claude configuration:
+
+```
+~/.claude/
+├── CLAUDE.md              # Development guidelines and best practices
+└── agents/
+    └── knowledge-scout.md # Intelligent research agent configuration
+```
+
+### After Installation
+
+Once installed, the workflow is automatically available in all your projects. Simply use Claude Code normally:
+
+```bash
+cd your-project
+claude "help me implement user authentication"
+```
+
+The workflow will automatically:
+- Break complex tasks into manageable stages
+- Use knowledge-scout for technical research
+- Follow TDD development practices
+- Learn from your existing codebase patterns
+
+### Management Commands
+
+```bash
+# Update to latest version
+./ccw.sh update
+
+# Remove the workflow
+./ccw.sh uninstall
+```
+
 ## Getting Started
 
-1. **Review CLAUDE.md** - Understand the development guidelines
-2. **Configure agents** - Set up the knowledge-scout agent
-3. **Follow the process** - Use the structured development flow
-4. **Maintain quality** - Ensure all quality gates are met
+1. **Install the workflow** - Use the one-line installer above
+2. **Review CLAUDE.md** - Understand the development guidelines
+3. **Start coding** - Use Claude Code with enhanced workflow capabilities
 
 ## Usage
 
