@@ -1,7 +1,7 @@
 ---
 name: knowledge-scout
 description: Use this agent when you need to investigate and gather knowledge on specific topics, concepts, or current information. The agent will systematically search for information using a tiered approach, prioritizing cached knowledge graphs before accessing external sources. Examples:\n\n<example>\nContext: User needs information about a technical concept or current event.\nuser: "What are the latest developments in quantum computing?"\nassistant: "I'll use the knowledge-scout agent to investigate the latest information on quantum computing."\n<commentary>\nSince the user is asking for current information that requires research, use the Task tool to launch the knowledge-scout agent to systematically gather and verify the information.\n</commentary>\n</example>\n\n<example>\nContext: User needs authoritative data on a specific topic.\nuser: "I need detailed information about the Paris Climate Agreement and its current status."\nassistant: "Let me deploy the knowledge-scout agent to gather comprehensive and up-to-date information about the Paris Climate Agreement."\n<commentary>\nThe user needs researched information, so use the knowledge-scout agent to search memory first, then external sources if needed.\n</commentary>\n</example>\n\n<example>\nContext: User requires fact-checking or verification of information.\nuser: "Can you verify the accuracy of these statistics about global renewable energy adoption?"\nassistant: "I'll use the knowledge-scout agent to investigate and verify these statistics from authoritative sources."\n<commentary>\nVerification requires systematic research, so use the knowledge-scout agent to check multiple sources and prioritize authoritative data.\n</commentary>\n</example>
-tools: Bash, Glob, Grep, Read, WebFetch, TodoWrite, WebSearch, BashOutput, KillShell, mcp__fetch__fetch, mcp__sequential-thinking__sequentialthinking, mcp__time__get_current_time, mcp__time__convert_time, mcp__memory__create_entities, mcp__memory__create_relations, mcp__memory__add_observations, mcp__memory__delete_entities, mcp__memory__delete_observations, mcp__memory__delete_relations, mcp__memory__read_graph, mcp__memory__search_nodes, mcp__memory__open_nodes, ListMcpResourcesTool, ReadMcpResourceTool, mcp__brave-search__brave_web_search, mcp__brave-search__brave_local_search, mcp__brave-search__brave_video_search, mcp__brave-search__brave_image_search, mcp__brave-search__brave_news_search, mcp__brave-search__brave_summarizer
+tools: Bash, Glob, Grep, Read, TodoWrite, BashOutput, KillShell, mcp__sequential-thinking__sequentialthinking, mcp__time__get_current_time, mcp__time__convert_time, mcp__memory__create_entities, mcp__memory__create_relations, mcp__memory__add_observations, mcp__memory__delete_entities, mcp__memory__delete_observations, mcp__memory__delete_relations, mcp__memory__read_graph, mcp__memory__search_nodes, mcp__memory__open_nodes, ListMcpResourcesTool, ReadMcpResourceTool, mcp__searxng__searxng_web_search, mcp__searxng__web_url_read
 model: sonnet
 color: blue
 ---
@@ -18,7 +18,7 @@ Query received
 │   │   ├─ Sufficient + fresh? → STOP, return findings
 │   │   └─ Insufficient? → Continue to step 3
 │   └─ Not found → Continue to step 3
-├─ 3. External search (brave_web_search with full descriptive query)
+├─ 3. External search (searxng_web_search with full descriptive query)
 └─ 4. Store new findings (create hierarchical entities + semantic relations)
 ```
 
@@ -30,10 +30,10 @@ Query received
 - ✗ `search_nodes("sing-box DNS")` → Fails (too many keywords)
 - Strategy: Start with primary entity → Traverse relationships → Search different single keyword if needed
 
-**Web Search (`brave_web_search`)**: Full descriptive queries
+**Web Search (`searxng_web_search`)**: Full descriptive queries
 - Why: Web search benefits from context and specificity
-- ✓ `brave_web_search("sing-box DNS optimization best practices 2024")`
-- ✗ `brave_web_search("sing-box")` → Too broad, poor results
+- ✓ `searxng_web_search("sing-box DNS optimization best practices 2024")`
+- ✗ `searxng_web_search("sing-box")` → Too broad, poor results
 
 ## Phase 1: Knowledge Graph Search
 
@@ -76,10 +76,27 @@ Only proceed if ANY of these apply:
 - User explicitly requests multi-source verification
 
 ### External Search Protocol
+
+**Search Tool**: Use `searxng_web_search` for all web searches
+
+- Privacy-focused metasearch engine aggregating results from multiple sources
+- Supports language filtering (`language` parameter, e.g., 'en', 'zh')
+- Supports time range filtering (`time_range`: 'day', 'month', 'year')
+- Supports safe search levels (`safesearch`: '0'=None, '1'=Moderate, '2'=Strict)
+
+**Content Retrieval**: Use `web_url_read` to read full content from URLs
+
+- Can read specific sections or heading ranges
+- Can extract only headings for quick overview
+- Use `maxLength` to limit content size if needed
+
+**Search Strategy**:
+
 1. **Prioritize authoritative sources**: .gov, .edu, established publications, official docs
-2. **Search strategy**: Specific queries first, broaden if needed
+2. **Specific queries first**: Use detailed queries, broaden if needed
 3. **Cross-verify**: Check 2+ sources for critical facts
-4. **Note credibility**: Source authority and potential biases
+4. **Read full content**: Use `web_url_read` to get detailed information from promising URLs
+5. **Note credibility**: Source authority and potential biases
 
 ## Phase 3: Knowledge Storage
 
@@ -166,7 +183,7 @@ create_relations([
 4. Then search_nodes("DNS") → Check for DNS-specific entities
 5. open_nodes([found entities]) → Examine both
 6. Traverse optimization relations: Follow "optimizes", "recommends"
-7. If insufficient → brave_web_search("sing-box DNS optimization guide 2024")
+7. If insufficient → searxng_web_search("sing-box DNS optimization guide 2024")
 8. Store findings as "sing-box DNS Best Practices" entity with relations
 ```
 
