@@ -1,167 +1,81 @@
-# Development Guidelines
+# Claude Code Workflow
 
-## Philosophy
+## Overview
 
-### Core Beliefs
+这是一个 Claude Code 工作流优化项目，包含自定义 agent 配置和开发指南。
 
-- **Incremental progress over big bangs** - Small changes that compile and pass tests
-- **Learning from existing code** - Study and plan before implementing
-- **Pragmatic over dogmatic** - Adapt to project reality
-- **Clear intent over clever code** - Be boring and obvious
+## Agent 策略
 
-### Simplicity Means
+| Agent | 用途 | 触发场景 |
+|-------|------|----------|
+| **knowledge-scout** | 知识收集 | 调研技术概念、最佳实践、外部信息 |
+| **code-scout** | 代码分析 | 探索代码结构、查找模式、追踪依赖 |
 
-- Single responsibility per function/class
-- Avoid premature abstractions
-- No clever tricks - choose the boring solution
-- If you need to explain it, it's too complex
+**使用原则**:
+- 需要外部知识 → `knowledge-scout`（优先查缓存，必要时搜索）
+- 需要分析代码 → `code-scout`（并行搜索，file:line 引用）
+- 两者可并行运行以提高效率
 
-## Knowledge Gathering
+## 核心原则
 
-### Intelligent Research Strategy
+- **增量进展** - 小步提交，保持可编译
+- **先学后做** - 研究现有代码再实现
+- **简单优先** - 选择无聊但有效的方案
+- **单一职责** - 每个函数/类只做一件事
 
-**ALWAYS prioritize knowledge-scout agent** for any information gathering needs:
-- Research technical concepts, frameworks, or libraries
-- Investigate current best practices and developments
-- Verify information from authoritative sources
-- Gather comprehensive knowledge on unfamiliar topics
-- **Can be used concurrently** with other agents for parallel research
+## 开发流程
 
-Use knowledge-scout instead of manual searches whenever you need external knowledge.
+### 复杂任务分阶段
 
-## Process
-
-### 1. Planning & Staging
-
-Break complex work into 3-5 stages. Document in `IMPLEMENTATION_PLAN.md`:
-
-```markdown
-## Stage N: [Name]
-**Goal**: [Specific deliverable]
-**Success Criteria**: [Testable outcomes]
-**Tests**: [Specific test cases]
-**Status**: [Not Started|In Progress|Complete]
+在 `IMPLEMENTATION_PLAN.md` 中记录（完成后删除）：
 ```
-- Update status as you progress
-- Remove file when all stages are done
+## Stage N: [名称]
+目标: [具体交付物]
+状态: [Not Started|In Progress|Complete]
+```
 
-### 2. Implementation Flow
+### 实现顺序
 
-1. **Understand** - Study existing patterns in codebase
-2. **Test** - Write test first (red)
-3. **Implement** - Minimal code to pass (green)
-4. **Refactor** - Clean up with tests passing
-5. **Commit** - With clear message linking to plan
+1. **理解** - 找 3 个相似实现学习
+2. **测试** - 先写测试 (red)
+3. **实现** - 最小代码通过 (green)
+4. **重构** - 保持测试通过
+5. **提交** - 说明 "为什么"
 
-### 3. When Stuck (After 3 Attempts)
+### 卡住时 (3 次尝试后 STOP)
 
-**CRITICAL**: Maximum 3 attempts per issue, then STOP.
+1. 记录失败原因和错误信息
+2. 用 `knowledge-scout` 调研替代方案
+3. 质疑：是否正确的抽象层级？能否拆分？
+4. 换角度：不同库/模式/更简单的方法？
 
-1. **Document what failed**:
-   - What you tried
-   - Specific error messages
-   - Why you think it failed
+## 代码标准
 
-2. **Research alternatives**:
-   - Find 2-3 similar implementations
-   - Note different approaches used
+**架构**: 组合优于继承 | 接口优于单例 | 显式优于隐式
 
-3. **Question fundamentals**:
-   - Is this the right abstraction level?
-   - Can this be split into smaller problems?
-   - Is there a simpler approach entirely?
+**质量门禁**:
+- [ ] 测试通过
+- [ ] 无 linter 警告
+- [ ] commit message 清晰
+- [ ] 无无 issue 的 TODO
 
-4. **Try different angle**:
-   - Different library/framework feature?
-   - Different architectural pattern?
-   - Remove abstraction instead of adding?
+**错误处理**: 快速失败 + 上下文信息 | 绝不静默吞异常
 
-## Technical Standards
+## Token 效率
 
-### Architecture Principles
+**每次任务**:
+- 任务间用 `/clear` 重置上下文
+- 70% 容量时用 `/compact`
+- 用 `@file` 精确引用，避免泛泛描述
 
-- **Composition over inheritance** - Use dependency injection
-- **Interfaces over singletons** - Enable testing and flexibility
-- **Explicit over implicit** - Clear data flow and dependencies
-- **Test-driven when possible** - Never disable tests, fix them
+**避免**:
+- 过度工程（这是 POC，不是企业项目）
+- 不必要的抽象
+- 没被要求的功能
 
-### Code Quality
+## 禁止事项
 
-- **Every commit must**:
-  - Compile successfully
-  - Pass all existing tests
-  - Include tests for new functionality
-  - Follow project formatting/linting
-
-- **Before committing**:
-  - Run formatters/linters
-  - Self-review changes
-  - Ensure commit message explains "why"
-
-### Error Handling
-
-- Fail fast with descriptive messages
-- Include context for debugging
-- Handle errors at appropriate level
-- Never silently swallow exceptions
-
-## Decision Framework
-
-When multiple valid approaches exist, choose based on:
-
-1. **Testability** - Can I easily test this?
-2. **Readability** - Will someone understand this in 6 months?
-3. **Consistency** - Does this match project patterns?
-4. **Simplicity** - Is this the simplest solution that works?
-5. **Reversibility** - How hard to change later?
-
-## Project Integration
-
-### Learning the Codebase
-
-- Find 3 similar features/components
-- Identify common patterns and conventions
-- Use same libraries/utilities when possible
-- Follow existing test patterns
-
-### Tooling
-
-- Use project's existing build system
-- Use project's test framework
-- Use project's formatter/linter settings
-- Don't introduce new tools without strong justification
-
-## Quality Gates
-
-### Definition of Done
-
-- [ ] Tests written and passing
-- [ ] Code follows project conventions
-- [ ] No linter/formatter warnings
-- [ ] Commit messages are clear
-- [ ] Implementation matches plan
-- [ ] No TODOs without issue numbers
-
-### Test Guidelines
-
-- Test behavior, not implementation
-- One assertion per test when possible
-- Clear test names describing scenario
-- Use existing test utilities/helpers
-- Tests should be deterministic
-
-## Important Reminders
-
-**NEVER**:
-
-- Use `--no-verify` to bypass commit hooks
-- Disable tests instead of fixing them
-- Commit code that doesn't compile
-- Make assumptions - verify with existing code
-
-**ALWAYS**:
-
-- Commit working code incrementally
-- Update plan documentation as you go
-- Learn from existing implementations
-- Stop after 3 failed attempts and reassess
+- `--no-verify` 绕过 hooks
+- 禁用测试而非修复
+- 提交不能编译的代码
+- 假设而非验证
