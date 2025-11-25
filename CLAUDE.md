@@ -1,8 +1,4 @@
-# Claude Code Workflow
-
-## Overview
-
-这是一个 Claude Code 工作流优化项目，包含自定义 agent 配置和开发指南。
+# Development Guidelines
 
 ## Agent 策略
 
@@ -69,7 +65,7 @@
 - 用 `@file` 精确引用，避免泛泛描述
 
 **避免**:
-- 过度工程（这是 POC，不是企业项目）
+- 过度工程
 - 不必要的抽象
 - 没被要求的功能
 
