@@ -105,11 +105,55 @@ The workflow will automatically:
 ./ccw.sh uninstall
 ```
 
+## Required MCP Servers
+
+This workflow requires the following MCP (Model Context Protocol) servers to function properly:
+
+| MCP Server | Purpose | Used By |
+|------------|---------|---------|
+| **neo4j-memory** | Knowledge graph storage and retrieval | knowledge-scout |
+| **sequential-thinking** | Structured reasoning and problem decomposition | knowledge-scout |
+| **searxng** | Web search and URL content reading | knowledge-scout |
+| **time** | Current time for knowledge freshness tracking | knowledge-scout |
+| **tmux** | Terminal session management (optional) | General workflow |
+
+### MCP Installation
+
+```bash
+# neo4j-memory - Knowledge graph with Neo4j backend
+claude mcp add -s user neo4j-memory \
+  -e NEO4J_URI=bolt://your-neo4j-host:7687 \
+  -e NEO4J_USERNAME=neo4j \
+  -e NEO4J_PASSWORD=your-password \
+  -- uvx mcp-neo4j-memory
+
+# sequential-thinking - Structured reasoning
+claude mcp add -s user sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+
+# searxng - Web search (requires SearXNG instance)
+claude mcp add -s user searxng -e SEARXNG_URL=http://your-searxng-instance -- npx -y mcp-searxng
+
+# time - Current time provider
+claude mcp add -s user time -- uvx mcp-server-time
+
+# tmux - Terminal session management (optional)
+claude mcp add -s user tmux -- npx -y tmux-mcp --shell-type=bash
+```
+
+### Verify Installation
+
+```bash
+claude mcp list
+```
+
+All servers should show "Connected" status.
+
 ## Getting Started
 
 1. **Install the workflow** - Use the one-line installer above
-2. **Review CLAUDE.md** - Understand the development guidelines
-3. **Start coding** - Use Claude Code with enhanced workflow capabilities
+2. **Configure MCP servers** - Install required MCP servers listed above
+3. **Review CLAUDE.md** - Understand the development guidelines
+4. **Start coding** - Use Claude Code with enhanced workflow capabilities
 
 ## Usage
 
