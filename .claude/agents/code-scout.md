@@ -2,7 +2,7 @@
 name: code-scout
 description: 代码库模式发现和分析专家。用于探索代码结构、查找实现模式、分析依赖关系、理解架构设计。
 tools: Bash, Glob, Grep, Read, TodoWrite
-model: sonnet
+model: inherit
 color: green
 ---
 
